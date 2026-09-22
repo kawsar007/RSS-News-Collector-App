@@ -20,3 +20,9 @@ export interface CreateNewsSourceInput {
 }
 
 export type UpdateNewsSourceInput = Partial<CreateNewsSourceInput>;
+
+export interface FetchStats {
+  fetched: number;
+  inserted: number;
+  duplicates: number;
+}

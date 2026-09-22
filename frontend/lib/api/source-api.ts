@@ -1,5 +1,6 @@
 import {
   CreateNewsSourceInput,
+  FetchStats,
   NewsSource,
   UpdateNewsSourceInput,
 } from "@/types/news-source";
@@ -18,4 +19,7 @@ export const sourceApi = {
 
   remove: (id: number) =>
     apiClient.delete<{ message: string }>(`/news-sources/${id}`),
+
+  fetch: (id: number) =>
+    apiClient.post<FetchStats>(`/news-sources/${id}/fetch`, {}),
 };

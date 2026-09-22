@@ -43,4 +43,9 @@ export class NewsSourcesController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.newsSourcesService.remove(id);
   }
+
+  @Post(':id/fetch')
+  fetchNews(@Param('id', ParseIntPipe) id: number) {
+    return this.newsSourcesService.fetchNews(id);
+  }
 }
