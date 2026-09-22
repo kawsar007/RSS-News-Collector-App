@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model NewsSource {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(255)
+  url           String    @unique @db.VarChar(500)
+  type          String    @default("rss") @db.VarChar(50)
+  isActive      Boolean   @default(true)
+  lastFetchedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  news News[]
+
+  @@map("news_sources")
+}
+
+model News {
+  id          Int       @id @default(autoincrement())
+  sourceId    Int
+  title       String    @db.VarChar(500)
+  description String?   @db.Text
+  link        String    @db.VarChar(1000)
+  imageUrl    String?   @db.VarChar(1000)
+  publishedAt DateTime?
+  guid        String    @db.VarChar(500)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  source NewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, guid], name: "unique_source_guid")
+  @@index([sourceId])
+  @@index([publishedAt])
+  @@map("news")
+}
