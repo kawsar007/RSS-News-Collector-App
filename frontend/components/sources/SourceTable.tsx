@@ -11,6 +11,27 @@ interface SourceTableProps {
   fetchingId: number | null;
 }
 
+function HealthIndicator({ source }: { source: NewsSource }) {
+
+  if (source.consecutiveFailures === 0) {
+    return <span className="text-xs text-green-600">Healthy</span>;
+  }
+
+  const label =
+    source.consecutiveFailures === 1
+      ? '1 failure'
+      : `${source.consecutiveFailures} consecutive failures`;
+
+  return (
+    <span
+      className="text-xs font-medium text-red-600"
+      title={source.errorMessage ?? undefined}
+    >
+      ⚠ {label}
+    </span>
+  );
+}
+
 export function SourceTable({ sources, onDelete, onFetch, fetchingId }: SourceTableProps) {
   return (
     <div className="overflow-x-auto rounded-md border border-gray-200">
@@ -20,6 +41,7 @@ export function SourceTable({ sources, onDelete, onFetch, fetchingId }: SourceTa
             <th className="px-4 py-3 text-left font-medium text-gray-500">Name</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500">RSS URL</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-500">Health</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500">Last Fetched</th>
             <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
           </tr>
@@ -32,10 +54,11 @@ export function SourceTable({ sources, onDelete, onFetch, fetchingId }: SourceTa
               <td className="px-4 py-3">
                 <StatusBadge isActive={source.isActive} />
               </td>
+              <td className="px-4 py-3">
+                <HealthIndicator source={source} />
+              </td>
               <td className="px-4 py-3 text-gray-500">
-                {source.lastFetchedAt
-                  ? new Date(source.lastFetchedAt).toLocaleString()
-                  : 'Never'}
+                {source.lastFetchedAt ? new Date(source.lastFetchedAt).toLocaleString() : 'Never'}
               </td>
               <td className="px-4 py-3 text-right">
                 <div className="flex justify-end gap-3">

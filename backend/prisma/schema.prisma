@@ -14,17 +14,21 @@ datasource db {
 }
 
 model NewsSource {
-  id            Int       @id @default(autoincrement())
-  name          String    @db.VarChar(255)
-  url           String    @unique @db.VarChar(500)
-  type          String    @default("rss") @db.VarChar(50)
-  isActive      Boolean   @default(true)
-  lastFetchedAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                  Int       @id @default(autoincrement())
+  name                String    @db.VarChar(255)
+  url                 String    @unique @db.VarChar(500)
+  type                String    @default("rss") @db.VarChar(50)
+  isActive            Boolean   @default(true)
+  lastFetchedAt       DateTime?
+  failedAt            DateTime?
+  errorMessage        String?   @db.VarChar(500)
+  consecutiveFailures Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   news News[]
 
+  @@index([isActive])
   @@map("news_sources")
 }
 

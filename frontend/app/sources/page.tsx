@@ -83,6 +83,21 @@ export default function SourcesPage() {
       {fetchResult && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
           <span>
+            <strong>{fetchResult.sourceName}</strong> — fetched {fetchResult.stats.fetched}, inserted{' '}
+            {fetchResult.stats.inserted} new, skipped {fetchResult.stats.duplicates} duplicates
+            {fetchResult.stats.skippedInvalid > 0 &&
+              ` (${fetchResult.stats.skippedInvalid} invalid items ignored)`}
+            .
+          </span>
+          <button onClick={() => setFetchResult(null)} className="ml-4 font-medium hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* {fetchResult && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          <span>
             <strong>{fetchResult.sourceName}</strong> — fetched {fetchResult.stats.fetched},
             inserted {fetchResult.stats.inserted} new, skipped {fetchResult.stats.duplicates}{' '}
             duplicates.
@@ -91,7 +106,7 @@ export default function SourcesPage() {
             Dismiss
           </button>
         </div>
-      )}
+      )} */}
 
       {fetchError && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">

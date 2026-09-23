@@ -5,6 +5,9 @@ export interface NewsSource {
   type: string;
   isActive: boolean;
   lastFetchedAt: string | null;
+  failedAt: string | null;
+  errorMessage: string | null;
+  consecutiveFailures: number;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -25,4 +28,6 @@ export interface FetchStats {
   fetched: number;
   inserted: number;
   duplicates: number;
+  skippedInvalid: number;
+  retried: boolean;
 }

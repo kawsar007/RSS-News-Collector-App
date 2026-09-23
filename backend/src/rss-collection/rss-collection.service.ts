@@ -1,15 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { delay } from '../common/utils/delay';
 import { NewsSourcesService } from '../news-sources/news-sources.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const DELAY_BETWEEN_SOURCES_MS = 1000; // simple, fixed rate limit — 1 req/sec to varying hosts
 
 @Injectable()
 export class RssCollectionService {
   private readonly logger = new Logger(RssCollectionService.name);
-
-  // Prevents overlapping runs if one cycle takes longer than the interval
-  // between ticks (e.g. many slow feeds). Without this guard, a second
-  // run could start while the first is still fetching, doubling load.
   private isRunning = false;
 
   constructor(
@@ -18,7 +17,6 @@ export class RssCollectionService {
   ) {}
 
   @Cron(CronExpression.EVERY_10_MINUTES)
-  // @Cron(CronExpression.EVERY_30_SECONDS)
   async handleScheduledCollection() {
     if (this.isRunning) {
       this.logger.warn(
@@ -26,7 +24,6 @@ export class RssCollectionService {
       );
       return;
     }
-
     this.isRunning = true;
     try {
       await this.collectAll();
@@ -53,28 +50,54 @@ export class RssCollectionService {
     let totalDuplicates = 0;
     let failedCount = 0;
 
-    // Sequential, not Promise.all — deliberate choice, explained in section 7.
-    for (const source of activeSources) {
+    for (let i = 0; i < activeSources.length; i++) {
+      const source = activeSources[i];
+
       try {
         const stats = await this.newsSourcesService.fetchNews(source.id);
         this.logger.log(
-          `[${source.name}] fetched=${stats.fetched} inserted=${stats.inserted} duplicates=${stats.duplicates}`,
+          `[${source.name}] fetched=${stats.fetched} inserted=${stats.inserted} ` +
+            `duplicates=${stats.duplicates} skippedInvalid=${stats.skippedInvalid}` +
+            (stats.retried ? ' (succeeded after retry)' : ''),
         );
         totalInserted += stats.inserted;
         totalDuplicates += stats.duplicates;
       } catch (error) {
         failedCount++;
-        const message =
-          error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`[${source.name}] fetch failed: ${message}`);
-        // Intentionally no `throw` here — one bad feed must not stop the
-        // rest of the cycle. Phase 11/12 will persist this failure info
-        // (failedAt, errorMessage) instead of just logging it.
+        this.logFetchFailure(source.name, error);
+      }
+
+      // Rate limiting: pause between sources so we're not hammering many
+      // different hosts back-to-back with zero delay. Skipped after the
+      // last item — no reason to wait after the final source.
+      const isLast = i === activeSources.length - 1;
+      if (!isLast) {
+        await delay(DELAY_BETWEEN_SOURCES_MS);
       }
     }
 
     this.logger.log(
-      `Collection cycle complete. inserted=${totalInserted} duplicates=${totalDuplicates} failed=${failedCount}/${activeSources.length}`,
+      `Collection cycle complete. inserted=${totalInserted} duplicates=${totalDuplicates} ` +
+        `failed=${failedCount}/${activeSources.length}`,
     );
+  }
+
+  private logFetchFailure(sourceName: string, error: unknown) {
+    if (error instanceof HttpException) {
+      const status = error.getStatus();
+      const message = error.message;
+      if (status === 408)
+        this.logger.warn(`[${sourceName}] TIMEOUT — ${message}`);
+      else if (status === 503)
+        this.logger.warn(`[${sourceName}] NETWORK — ${message}`);
+      else if (status === 400)
+        this.logger.error(`[${sourceName}] INVALID FEED — ${message}`);
+      else
+        this.logger.error(
+          `[${sourceName}] UNEXPECTED (${status}) — ${message}`,
+        );
+      return;
+    }
+    this.logger.error(`[${sourceName}] UNKNOWN ERROR — ${error}`);
   }
 }
