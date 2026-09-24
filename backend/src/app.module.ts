@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { NewsSourcesModule } from './news-sources/news-sources.module';
 import { NewsModule } from './news/news.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { QueueModule } from './queue/queue.module';
 import { RssCollectionModule } from './rss-collection/rss-collection.module';
 import { RssParserModule } from './rss-parser/rss-parser.module';
 
@@ -16,6 +17,7 @@ import { RssParserModule } from './rss-parser/rss-parser.module';
     NewsSourcesModule,
     NewsModule,
     RssCollectionModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers: [AppService],
