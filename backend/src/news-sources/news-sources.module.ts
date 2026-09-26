@@ -1,12 +1,13 @@
-import { Module } from '@nestjs/common';
-import { RssParserModule } from 'src/rss-parser/rss-parser.module';
+import { Module, forwardRef } from '@nestjs/common';
+import { RssFetchQueueModule } from '../rss-fetch-queue/rss-fetch-queue.module';
+import { RssParserModule } from '../rss-parser/rss-parser.module';
 import { NewsSourcesController } from './news-sources.controller';
 import { NewsSourcesService } from './news-sources.service';
 
 @Module({
-  imports: [RssParserModule],
+  imports: [RssParserModule, forwardRef(() => RssFetchQueueModule)],
   controllers: [NewsSourcesController],
   providers: [NewsSourcesService],
-  exports: [NewsSourcesService], // Phase 6 will need this from a RssCollectionModule
+  exports: [NewsSourcesService],
 })
 export class NewsSourcesModule {}

@@ -7,6 +7,7 @@ import { NewsSourcesModule } from './news-sources/news-sources.module';
 import { NewsModule } from './news/news.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RssCollectionModule } from './rss-collection/rss-collection.module';
+import { RssFetchQueueModule } from './rss-fetch-queue/rss-fetch-queue.module';
 import { RssParserModule } from './rss-parser/rss-parser.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { RssParserModule } from './rss-parser/rss-parser.module';
     NewsSourcesModule,
     NewsModule,
     RssCollectionModule,
+    RssFetchQueueModule,
   ],
   controllers: [AppController],
   providers: [AppService],

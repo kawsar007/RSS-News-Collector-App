@@ -1,15 +1,17 @@
+// backend/src/rss-fetch-queue/rss-fetch-queue.module.ts (final version)
 import { BullModule } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { NewsSourcesModule } from '../news-sources/news-sources.module';
+import { RssFetchQueueService } from './rss-fetch-queue.service';
 import { RssFetchProducer } from './rss-fetch.producer';
 import { RssFetchWorker } from './rss-fetch.worker';
 
 @Module({
   imports: [
     BullModule.registerQueue({ name: 'rss-fetch' }),
-    NewsSourcesModule, // worker needs NewsSourcesService
+    forwardRef(() => NewsSourcesModule),
   ],
-  providers: [RssFetchProducer, RssFetchWorker],
-  exports: [RssFetchProducer],
+  providers: [RssFetchProducer, RssFetchWorker, RssFetchQueueService],
+  exports: [RssFetchProducer, RssFetchQueueService],
 })
 export class RssFetchQueueModule {}
