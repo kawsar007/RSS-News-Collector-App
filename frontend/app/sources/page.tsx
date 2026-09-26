@@ -5,11 +5,12 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { pollJobUntilDone } from '@/lib/api/poll-job';
 import { sourceApi } from '@/lib/api/source-api';
 import { ApiError } from '@/types/api';
 import { FetchStats, NewsSource } from '@/types/news-source';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function SourcesPage() {
   const [sources, setSources] = useState<NewsSource[]>([]);
@@ -21,6 +22,15 @@ export default function SourcesPage() {
     null,
   );
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Tracks whether the component is still mounted, so an in-flight poll
+  // loop doesn't call setState after the user navigates away.
+  const cancelledRef = useRef(false);
+  useEffect(() => {
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, []);
 
   const loadSources = useCallback(async () => {
     setLoading(true);
@@ -57,14 +67,33 @@ export default function SourcesPage() {
     setFetchError(null);
 
     try {
-      const stats = await sourceApi.fetch(source.id);
-      setFetchResult({ sourceName: source.name, stats });
-      await loadSources(); // refresh lastFetchedAt + news count
+      // Step 1: enqueue — returns almost instantly, unlike Phase 12's
+      // direct call which blocked until the whole fetch (+ retry) finished.
+      const { jobId } = await sourceApi.triggerFetch(source.id);
+
+      // Step 2: poll — the UI stays responsive (button shows "Fetching…")
+      // while this loop checks job status roughly once a second.
+      const finalStatus = await pollJobUntilDone(
+        sourceApi.getFetchJobStatus,
+        jobId,
+        () => cancelledRef.current,
+      );
+
+      if (cancelledRef.current) return;
+
+      if (finalStatus.status === 'completed' && finalStatus.result) {
+        setFetchResult({ sourceName: source.name, stats: finalStatus.result });
+      } else {
+        setFetchError(`${source.name}: ${finalStatus.error ?? 'Fetch job failed'}`);
+      }
+
+      await loadSources(); // refresh lastFetchedAt, health fields, news count
     } catch (err) {
+      if (cancelledRef.current) return;
       const message = err instanceof ApiError ? err.message : 'Failed to fetch RSS feed.';
       setFetchError(`${source.name}: ${message}`);
     } finally {
-      setFetchingId(null);
+      if (!cancelledRef.current) setFetchingId(null);
     }
   }
 
@@ -83,21 +112,6 @@ export default function SourcesPage() {
       {fetchResult && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
           <span>
-            <strong>{fetchResult.sourceName}</strong> — fetched {fetchResult.stats.fetched}, inserted{' '}
-            {fetchResult.stats.inserted} new, skipped {fetchResult.stats.duplicates} duplicates
-            {fetchResult.stats.skippedInvalid > 0 &&
-              ` (${fetchResult.stats.skippedInvalid} invalid items ignored)`}
-            .
-          </span>
-          <button onClick={() => setFetchResult(null)} className="ml-4 font-medium hover:underline">
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* {fetchResult && (
-        <div className="mb-4 flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          <span>
             <strong>{fetchResult.sourceName}</strong> — fetched {fetchResult.stats.fetched},
             inserted {fetchResult.stats.inserted} new, skipped {fetchResult.stats.duplicates}{' '}
             duplicates.
@@ -106,7 +120,7 @@ export default function SourcesPage() {
             Dismiss
           </button>
         </div>
-      )} */}
+      )}
 
       {fetchError && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -118,7 +132,6 @@ export default function SourcesPage() {
       )}
 
       {loading && <LoadingSpinner />}
-
       {!loading && error && <ErrorMessage message={error} onRetry={loadSources} />}
 
       {!loading && !error && sources.length === 0 && (

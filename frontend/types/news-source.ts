@@ -10,9 +10,7 @@ export interface NewsSource {
   consecutiveFailures: number;
   createdAt: string;
   updatedAt: string;
-  _count?: {
-    news: number;
-  };
+  _count?: { news: number };
 }
 
 export interface CreateNewsSourceInput {
@@ -30,4 +28,24 @@ export interface FetchStats {
   duplicates: number;
   skippedInvalid: number;
   retried: boolean;
+}
+
+export type JobState =
+  | "waiting"
+  | "active"
+  | "completed"
+  | "failed"
+  | "delayed"
+  | "unknown";
+
+export interface FetchJobStatus {
+  jobId: string;
+  status: JobState;
+  result?: FetchStats;
+  error?: string;
+}
+
+export interface EnqueueFetchResponse {
+  jobId: string;
+  message: string;
 }
